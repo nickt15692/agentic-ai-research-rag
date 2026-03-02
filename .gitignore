@@ -1,0 +1,15 @@
+# Ignore virtual environment
+.venv/
+
+# Ignore Chroma DB
+rag/chroma_db/
+
+# Ignore artifacts
+rag/artifacts/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore environment variables
+.env
