@@ -6,3 +6,6 @@ python-dotenv
 tiktoken
 numpy
 pandas
+langchain
+langchain-text-splitters
+pymupdf

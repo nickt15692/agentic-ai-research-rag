@@ -26,12 +26,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EMBEDDING_MODEL = "text-embedding-3-small"
 LLM_MODEL = "gpt-4.1-mini"
 
-# Chunking parameters
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
+# Chunking parameters — smaller chunks = more precise retrieval
+CHUNK_SIZE = 600
+CHUNK_OVERLAP = 100
 
 # Retrieval / memory settings
-TOP_K = 5
+TOP_K = 8          # fetch more candidates for better coverage
 HISTORY_TURNS = 4
 
 # Ensure directories exist
