@@ -43,7 +43,7 @@ def embed_texts(texts: list[str], model_name: str = EMBEDDING_MODEL) -> list[lis
         raise ValueError("Cannot embed an empty list of texts.")
 
     # OpenAI allows max ~300k tokens per request; batch to stay under the limit.
-    BATCH_SIZE = 256
+    BATCH_SIZE = 128
     all_embeddings: list[list[float]] = []
 
     try:
