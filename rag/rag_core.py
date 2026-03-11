@@ -4,6 +4,7 @@
 import logging
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError, APITimeoutError
 from rag.vector_store import search
+from rag.reranker import rerank
 from rag.config import TOP_K, HISTORY_TURNS, LLM_MODEL, OPENAI_API_KEY, MAX_QUESTION_LENGTH
 
 logger = logging.getLogger("rag.core")
@@ -140,7 +141,13 @@ def generate_answer(
             [],
         )
 
-    # 4. Build context from retrieved chunks
+    # 4. Rerank retrieved chunks with cross-encoder for better precision
+    try:
+        results = rerank(search_query, results)
+    except Exception as e:
+        logger.warning("Reranking failed, using raw retrieval order: %s", e)
+
+    # 5. Build context from reranked chunks
     context, metas, confidence_scores = build_context(results)
     history_text = format_history(history)
 
@@ -164,7 +171,7 @@ Answer clearly and concisely. If the context does not contain enough information
 say what is missing or what additional information would be needed.
 """
 
-    # 5. Call the LLM API
+    # 6. Call the LLM API
     try:
         response = client.chat.completions.create(
             model=LLM_MODEL,

@@ -37,16 +37,24 @@ if not OPENAI_API_KEY:
     )
 
 # Model names
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = "text-embedding-3-large"
 LLM_MODEL = "gpt-4.1-mini"
 
-# Chunking parameters — smaller chunks = more precise retrieval
-CHUNK_SIZE = 600
-CHUNK_OVERLAP = 100
+# Chunking parameters — larger chunks preserve more context for academic papers
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
 
 # Retrieval / memory settings
-TOP_K = 8          # fetch more candidates for better coverage
+TOP_K = 15         # fetch more candidates; reranker narrows to RERANK_TOP_K
+RERANK_TOP_K = 6   # final number of chunks after cross-encoder reranking
 HISTORY_TURNS = 4
+
+# Cross-encoder reranking model (sentence-transformers)
+RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+# Hybrid search weights (vector + BM25 keyword search)
+VECTOR_WEIGHT = 0.7
+BM25_WEIGHT = 0.3
 
 # Maximum allowed question length (characters) to prevent token overflow
 MAX_QUESTION_LENGTH = 2000
