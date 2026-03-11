@@ -37,7 +37,7 @@ if not OPENAI_API_KEY:
     )
 
 # Model names
-EMBEDDING_MODEL = "text-embedding-3-large"
+EMBEDDING_MODEL = "text-embedding-3-small"
 LLM_MODEL = "gpt-4.1-mini"
 
 # Chunking parameters — larger chunks preserve more context for academic papers
@@ -64,7 +64,7 @@ CONFIDENCE_HIGH = 0.40
 CONFIDENCE_MEDIUM = 0.25
 
 # Distance normalization factor for confidence score calculation
-DISTANCE_NORMALIZATION = 1.5
+DISTANCE_NORMALIZATION = 1.2
 
 # Ensure directories exist
 os.makedirs(PAPERS_DIR, exist_ok=True)

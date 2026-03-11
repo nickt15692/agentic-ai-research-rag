@@ -98,9 +98,9 @@ def get_chroma_collection(persist_dir: str = CHROMA_DIR, name: str = "papers_rag
 
 def distance_to_confidence(distance: float) -> float:
     """
-    Tuned for re-indexed chunks with pymupdf + smaller chunk size.
-    - distance ~0.85 -> ~43% (good match)
-    - distance ~1.0  -> ~33% (acceptable)
+    Tuned for text-embedding-3-small with pymupdf + smaller chunk size.
+    - distance ~0.60 -> ~50% (good match)
+    - distance ~0.80 -> ~33% (acceptable)
     - distance ~1.2+ -> ~0%  (poor match)
     """
     return round(max(0.0, 1.0 - (distance / DISTANCE_NORMALIZATION)), 3)
