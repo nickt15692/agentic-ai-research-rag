@@ -1,18 +1,15 @@
 # rag/rag_core.py
 # Core RAG logic: search + build prompt + call LLM, with conversation memory.
 
-import logging
-from openai import OpenAI, APIError, APIConnectionError, RateLimitError, APITimeoutError
+from openai import OpenAI
 from rag.vector_store import search
-from rag.config import TOP_K, HISTORY_TURNS, LLM_MODEL, OPENAI_API_KEY, MAX_QUESTION_LENGTH
+from rag.config import TOP_K, HISTORY_TURNS, LLM_MODEL, OPENAI_API_KEY
 
-logger = logging.getLogger("rag.core")
-
-# Initialize OpenAI client with timeout
-client = OpenAI(api_key=OPENAI_API_KEY, timeout=30.0)
+# Initialize OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-def format_history(history: list[dict]) -> str:
+def format_history(history):
     """
     Turn the last N turns of chat history into a text block for the prompt.
     history: list of {"role": "user"/"assistant", "content": str}
@@ -27,7 +24,7 @@ def format_history(history: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def rewrite_query(question: str, history: list[dict]) -> str:
+def rewrite_query(question, history):
     """
     Use the LLM to rewrite the user's question into a more specific,
     self-contained search query before hitting the vector store.
@@ -50,18 +47,12 @@ def rewrite_query(question: str, history: list[dict]) -> str:
             temperature=0,
         )
         return response.choices[0].message.content.strip()
-    except RateLimitError:
-        logger.warning("Rate limited during query rewrite; using original question.")
-        return question
-    except APITimeoutError:
-        logger.warning("Timeout during query rewrite; using original question.")
-        return question
-    except (APIError, APIConnectionError) as e:
-        logger.warning("API error during query rewrite: %s. Using original question.", e)
+    except Exception:
+        # Fall back to original question if rewrite fails
         return question
 
 
-def build_context(results: dict) -> tuple[str, list[dict], list[float]]:
+def build_context(results):
     """
     Convert Chroma search results into a flat text 'context' block
     plus the associated metadata and confidence scores.
@@ -82,14 +73,9 @@ def build_context(results: dict) -> tuple[str, list[dict], list[float]]:
     return context, metas, confidence_scores
 
 
-def generate_answer(
-    question: str,
-    history: list[dict],
-    title_filter: list[str] | None = None,
-) -> tuple[str, list, list, list]:
+def generate_answer(question, history, title_filter=None):
     """
     Full RAG step:
-    - Validate input
     - Rewrite the query for better retrieval
     - Retrieve relevant chunks from Chroma (optionally filtered by paper title)
     - Build a prompt with system msg + history + context + question
@@ -102,33 +88,15 @@ def generate_answer(
 
     Returns: (answer_str, metadatas, docs, confidence_scores)
     """
-    # 0. Input validation
-    if not question or not question.strip():
-        return "Please enter a question.", [], [], []
-
-    question = question.strip()
-    if len(question) > MAX_QUESTION_LENGTH:
-        return (
-            f"Your question is too long ({len(question)} characters). "
-            f"Please keep it under {MAX_QUESTION_LENGTH} characters.",
-            [], [], [],
-        )
-
     # 1. Rewrite query for better vector search recall
     search_query = rewrite_query(question, history)
 
     # 2. Retrieve relevant chunks
     try:
         results = search(search_query, top_k=TOP_K, title_filter=title_filter)
-    except (APIError, APIConnectionError, RateLimitError) as e:
-        logger.error("OpenAI API error during search embedding: %s", e)
-        return f"OpenAI API error during search: {e}", [], [], []
-    except ValueError as e:
-        logger.error("Vector store error: %s", e)
-        return str(e), [], [], []
     except Exception as e:
-        logger.error("Unexpected error during vector search: %s", e, exc_info=True)
-        return f"Error while searching the vector store: {e}", [], [], []
+        msg = f"Error while searching the vector store: {e}"
+        return msg, [], [], []
 
     # 3. Handle case where no results are found
     if not results["documents"] or len(results["documents"][0]) == 0:
@@ -174,16 +142,7 @@ say what is missing or what additional information would be needed.
             ],
             temperature=0.2,
         )
-    except RateLimitError as e:
-        logger.error("Rate limited during answer generation: %s", e)
-        msg = "The OpenAI API rate limit was exceeded. Please wait a moment and try again."
-        return msg, metas, results["documents"][0], confidence_scores
-    except APITimeoutError as e:
-        logger.error("Timeout during answer generation: %s", e)
-        msg = "The request to OpenAI timed out. Please try again."
-        return msg, metas, results["documents"][0], confidence_scores
-    except (APIError, APIConnectionError) as e:
-        logger.error("API error during answer generation: %s", e)
+    except Exception as e:
         msg = f"Error while calling the language model: {e}"
         return msg, metas, results["documents"][0], confidence_scores
 

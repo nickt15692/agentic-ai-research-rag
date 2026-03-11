@@ -1,7 +1,11 @@
 streamlit
 chromadb
 openai
+pypdf
 python-dotenv
+tiktoken
+numpy
+pandas
 langchain
 langchain-text-splitters
 pymupdf
