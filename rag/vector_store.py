@@ -30,9 +30,16 @@ def embed_texts(texts: list[str], model_name: str = EMBEDDING_MODEL) -> list[lis
     if not texts:
         raise ValueError("Cannot embed an empty list of texts.")
 
+    # OpenAI allows max ~300k tokens per request; batch to stay under the limit.
+    BATCH_SIZE = 256
+    all_embeddings: list[list[float]] = []
+
     try:
-        response = client.embeddings.create(model=model_name, input=texts)
-        return [item.embedding for item in response.data]
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch = texts[i : i + BATCH_SIZE]
+            response = client.embeddings.create(model=model_name, input=batch)
+            all_embeddings.extend(item.embedding for item in response.data)
+        return all_embeddings
     except RateLimitError:
         logger.error("Rate limited while generating embeddings for %d texts.", len(texts))
         raise
