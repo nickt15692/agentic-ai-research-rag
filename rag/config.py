@@ -59,9 +59,9 @@ BM25_WEIGHT = 0.3
 # Maximum allowed question length (characters) to prevent token overflow
 MAX_QUESTION_LENGTH = 2000
 
-# Confidence badge thresholds
-CONFIDENCE_HIGH = 0.40
-CONFIDENCE_MEDIUM = 0.25
+# Confidence badge thresholds (calibrated for cross-encoder sigmoid scores)
+CONFIDENCE_HIGH = 0.60
+CONFIDENCE_MEDIUM = 0.30
 
 # Distance normalization factor for confidence score calculation
 DISTANCE_NORMALIZATION = 1.2

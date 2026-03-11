@@ -2,6 +2,7 @@
 # Cross-encoder reranking to improve retrieval precision.
 
 import logging
+import math
 from sentence_transformers import CrossEncoder
 from rag.config import RERANK_MODEL, RERANK_TOP_K
 
@@ -54,12 +55,16 @@ def rerank(query: str, results: dict, top_k: int = RERANK_TOP_K) -> dict:
     ids = results["ids"][0]
     metas = results["metadatas"][0]
     dists = results["distances"][0]
-    conf = results.get("confidence_scores", [None] * len(docs))
+
+    # Use cross-encoder scores for confidence instead of raw L2 distances.
+    # ms-marco-MiniLM-L-6-v2 outputs logits: negative = irrelevant, positive = relevant.
+    # Sigmoid maps these to [0, 1] for a proper confidence score.
+    reranker_conf = [round(1 / (1 + math.exp(-float(scores[i]))), 3) for i in top_indices]
 
     return {
         "ids": [[ids[i] for i in top_indices]],
         "documents": [[docs[i] for i in top_indices]],
         "metadatas": [[metas[i] for i in top_indices]],
         "distances": [[dists[i] for i in top_indices]],
-        "confidence_scores": [conf[i] for i in top_indices],
+        "confidence_scores": reranker_conf,
     }
