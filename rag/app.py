@@ -3,9 +3,13 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import logging
 import streamlit as st
 from rag.rag_core import generate_answer
 from rag.vector_store import get_available_titles
+from rag.config import CONFIDENCE_HIGH, CONFIDENCE_MEDIUM, MAX_QUESTION_LENGTH
+
+logger = logging.getLogger("rag.app")
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="ResearchRAG", layout="wide")
@@ -29,8 +33,14 @@ with st.sidebar:
 
     try:
         available_titles = get_available_titles()
-    except Exception:
+    except RuntimeError as e:
+        logger.error("Failed to load paper titles: %s", e)
         available_titles = []
+        st.error("Could not connect to the vector database. Check the logs for details.")
+    except Exception as e:
+        logger.error("Unexpected error loading paper titles: %s", e, exc_info=True)
+        available_titles = []
+        st.warning("Could not load paper titles.")
 
     if available_titles:
         selected_titles = st.multiselect(
@@ -73,20 +83,27 @@ with st.sidebar:
 user_input = st.text_input("Your question:", "")
 
 if st.button("Ask") and user_input.strip():
-    history = st.session_state.history
-
-    with st.spinner("Searching papers and generating answer…"):
-        answer, metas, docs, scores = generate_answer(
-            user_input, history, title_filter=title_filter
+    # Validate input length before sending to the RAG pipeline
+    if len(user_input.strip()) > MAX_QUESTION_LENGTH:
+        st.error(
+            f"Your question is too long ({len(user_input.strip())} characters). "
+            f"Please keep it under {MAX_QUESTION_LENGTH} characters."
         )
+    else:
+        history = st.session_state.history
 
-    history.append({"role": "user", "content": user_input})
-    history.append({"role": "assistant", "content": answer})
+        with st.spinner("Searching papers and generating answer…"):
+            answer, metas, docs, scores = generate_answer(
+                user_input, history, title_filter=title_filter
+            )
 
-    st.session_state.history = history
-    st.session_state.last_metas = metas
-    st.session_state.last_docs = docs
-    st.session_state.last_scores = scores
+        history.append({"role": "user", "content": user_input})
+        history.append({"role": "assistant", "content": answer})
+
+        st.session_state.history = history
+        st.session_state.last_metas = metas
+        st.session_state.last_docs = docs
+        st.session_state.last_scores = scores
 
 # ── Conversation display ───────────────────────────────────────────────────────
 st.subheader("Conversation")
@@ -119,9 +136,9 @@ if st.session_state.last_metas:
         # Confidence badge colour
         if score is None:
             badge = ""
-        elif score >= 0.40:
+        elif score >= CONFIDENCE_HIGH:
             badge = f" 🟢 {score:.0%}"
-        elif score >= 0.25:
+        elif score >= CONFIDENCE_MEDIUM:
             badge = f" 🟡 {score:.0%}"
         else:
             badge = f" 🔴 {score:.0%}"
